@@ -1,4 +1,5 @@
-// Copyright (c) 2025 FRC 5712
+// Copyright (c) 2025 FRC 325/144 & 5712
+// https://hemlock5712.github.io/Swerve-Setup/home.html
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file at
@@ -39,9 +40,12 @@ public interface DriveIO {
   @AutoLog
   public static class DriveIOInputs {
     // Module arrays with default states
-    public SwerveModuleState[] moduleStates = ArrayBuilder.buildSwerveModuleState();
-    public SwerveModuleState[] moduleTargets = ArrayBuilder.buildSwerveModuleState();
-    public SwerveModulePosition[] modulePositions = ArrayBuilder.buildSwerveModulePosition();
+    public SwerveModuleState[] moduleStates =
+        ArrayBuilder.buildSwerveModuleState(Constants.PP_CONFIG.numModules);
+    public SwerveModuleState[] moduleTargets =
+        ArrayBuilder.buildSwerveModuleState(Constants.PP_CONFIG.numModules);
+    public SwerveModulePosition[] modulePositions =
+        ArrayBuilder.buildSwerveModulePosition(Constants.PP_CONFIG.numModules);
 
     // Position and motion state
     public Pose2d pose = Pose2d.kZero;

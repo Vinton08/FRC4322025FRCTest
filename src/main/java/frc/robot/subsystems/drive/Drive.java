@@ -1,4 +1,5 @@
-// Copyright (c) 2025 FRC 5712
+// Copyright (c) 2025 FRC 325/144 & 5712
+// https://hemlock5712.github.io/Swerve-Setup/home.html
 //
 // Use of this source code is governed by an MIT-style
 // license that can be found in the LICENSE file at
@@ -12,6 +13,9 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
+import com.pathplanner.lib.path.PathConstraints;
+import com.pathplanner.lib.path.PathPlannerPath;
+import com.pathplanner.lib.util.PathPlannerLogging;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -22,6 +26,7 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj.Alert;
@@ -29,11 +34,14 @@ import edu.wpi.first.wpilibj.Alert.AlertType;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.ConditionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 import frc.robot.Constants;
 import frc.robot.Constants.Mode;
+import frc.robot.Robot;
+import frc.robot.subsystems.drive.requests.SysIdSwerveSteerGains_Torque;
 import frc.robot.subsystems.drive.requests.SysIdSwerveTranslation_Torque;
 import frc.robot.subsystems.vision.VisionUtil.VisionMeasurement;
 import frc.robot.utils.ArrayBuilder;
@@ -49,23 +57,22 @@ import org.littletonrobotics.junction.Logger;
 public class Drive extends SubsystemBase {
   private final DriveIO io;
   private final DriveIOInputsAutoLogged inputs;
-  private final ModuleIOInputsAutoLogged[] modules = ArrayBuilder.buildModuleAutoLogged();
+  private final ModuleIOInputsAutoLogged[] modules =
+      buildModuleAutoLogeed(Constants.PP_CONFIG.numModules);
 
   private final SwerveDriveKinematics kinematics =
       new SwerveDriveKinematics(Constants.SWERVE_MODULE_OFFSETS);
   private SwerveDrivePoseEstimator poseEstimator = null;
   private Trigger estimatorTrigger =
       new Trigger(() -> poseEstimator != null).and(() -> Constants.currentMode == Mode.REPLAY);
-  private SwerveModulePosition[] currentPositions = ArrayBuilder.buildSwerveModulePosition();
+  private SwerveModulePosition[] currentPositions =
+      ArrayBuilder.buildSwerveModulePosition(Constants.PP_CONFIG.numModules);
 
-  private Alert[] driveDisconnectedAlert =
-      ArrayBuilder.buildAlert("Disconnected drive motor on module");
-  private Alert[] turnDisconnectedAlert =
-      ArrayBuilder.buildAlert("Disconnected turn motor on module");
-  private Alert[] turnEncoderDisconnectedAlert =
-      ArrayBuilder.buildAlert("Disconnected turn encoder on module");
+  private Alert[] driveDisconnectedAlert = new Alert[Constants.PP_CONFIG.numModules];
+  private Alert[] turnDisconnectedAlert = new Alert[Constants.PP_CONFIG.numModules];
+  private Alert[] turnEncoderDisconnectedAlert = new Alert[Constants.PP_CONFIG.numModules];
 
-  private Alert gyroDisconnectedAlert = new Alert("Gyro Disconnected", AlertType.kError);
+  private Alert gyroDisconnectedAlert;
 
   /* Blue alliance sees forward as 0 degrees (toward red alliance wall) */
   private static final Rotation2d kBlueAlliancePerspectiveRotation = Rotation2d.kZero;
@@ -92,6 +99,8 @@ public class Drive extends SubsystemBase {
   // Example TorqueCurrent SysID - Others are avalible.
   private final SysIdSwerveTranslation_Torque m_translationTorqueCharacterization =
       new SysIdSwerveTranslation_Torque();
+  private final SysIdSwerveSteerGains_Torque m_steerTorqueCharacterization =
+      new SysIdSwerveSteerGains_Torque();
 
   /* SysId routine for characterizing torque translation. This is used to find PID gains for Torque Current of the drive motors. */
   private final SysIdRoutine m_sysIdRoutineTorqueTranslation =
@@ -101,11 +110,28 @@ public class Drive extends SubsystemBase {
               Volts.of(10), // Use dynamic step of 10 A
               Seconds.of(5), // Use timeout of 5 seconds
               // Log state with SignalLogger class
-              state -> Logger.recordOutput("SysIdTranslation_State", state.toString())),
+              state -> Logger.recordOutput("SysIdTorqueTranslation_State", state.toString())),
           new SysIdRoutine.Mechanism(
               output ->
                   setControl(
                       m_translationTorqueCharacterization.withTorqueCurrent(
+                          output.in(Volts))), // treat volts as amps
+              null,
+              this));
+
+  /* SysId routine for characterizing torque translation. This is used to find PID gains for Torque Current of the drive motors. */
+  private final SysIdRoutine m_sysIdRoutineTorqueSteer =
+      new SysIdRoutine(
+          new SysIdRoutine.Config(
+              Volts.of(5).per(Second), // Use ramp rate of 5 A/s
+              Volts.of(10), // Use dynamic step of 10 A
+              Seconds.of(5), // Use timeout of 5 seconds
+              // Log state with SignalLogger class
+              state -> Logger.recordOutput("SysIdTorqueSteer_State", state.toString())),
+          new SysIdRoutine.Mechanism(
+              output ->
+                  setControl(
+                      m_steerTorqueCharacterization.withTorqueCurrent(
                           output.in(Volts))), // treat volts as amps
               null,
               this));
@@ -160,14 +186,41 @@ public class Drive extends SubsystemBase {
               this));
 
   /* The SysId routine to test */
-  private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
+  private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTorqueSteer;
 
   public Drive(DriveIO io) {
 
     this.io = io;
     inputs = new DriveIOInputsAutoLogged();
 
+    configureAlerts();
     configureAutoBuilder();
+
+    PathPlannerLogging.setLogActivePathCallback(
+        (activePath) -> {
+          Logger.recordOutput(
+              "Odometry/Trajectory", activePath.toArray(new Pose2d[activePath.size()]));
+        });
+    PathPlannerLogging.setLogTargetPoseCallback(
+        (targetPose) -> {
+          Logger.recordOutput("Odometry/TrajectorySetpoint", targetPose);
+        });
+  }
+
+  private void configureAlerts() {
+    gyroDisconnectedAlert = new Alert("Gyro Disconnected", AlertType.kError);
+
+    for (int i = 0; i < modules.length; i++) {
+      driveDisconnectedAlert[i] =
+          new Alert(
+              "Disconnected drive motor on module " + Integer.toString(i) + ".", AlertType.kError);
+      turnDisconnectedAlert[i] =
+          new Alert(
+              "Disconnected turn motor on module " + Integer.toString(i) + ".", AlertType.kError);
+      turnEncoderDisconnectedAlert[i] =
+          new Alert(
+              "Disconnected turn encoder on module " + Integer.toString(i) + ".", AlertType.kError);
+    }
   }
 
   private void configureAutoBuilder() {
@@ -184,9 +237,9 @@ public class Drive extends SubsystemBase {
                     .withWheelForceFeedforwardsY(feedforwards.robotRelativeForcesYNewtons())),
         new PPHolonomicDriveController(
             // PID constants for translation
-            new PIDConstants(10, 0, 0),
+            new PIDConstants(3, 0, 0),
             // PID constants for rotation
-            new PIDConstants(7, 0, 0)),
+            new PIDConstants(1, 0, 0)),
         Constants.PP_CONFIG,
         // Assume the path needs to be flipped for Red vs Blue, this is normally the case
         () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
@@ -277,6 +330,30 @@ public class Drive extends SubsystemBase {
     io.resetPose(pose);
   }
 
+  // public Command goToPoint(int x, int y) {
+  //   Pose2d targetPose = new Pose2d(x, y, Rotation2d.fromDegrees(180));
+  //   PathConstraints constraints =
+  //       new PathConstraints(4.0, 5.0, Units.degreesToRadians(540), Units.degreesToRadians(720));
+  //   return AutoBuilder.pathfindToPose(targetPose, constraints);
+  // }
+  /*
+   * flips if needed
+   */
+  public Command goToPoint(Pose2d pose) {
+    PathConstraints constraints =
+        new PathConstraints(5.0, 5.0, Units.degreesToRadians(540), Units.degreesToRadians(720));
+    return new ConditionalCommand(
+        AutoBuilder.pathfindToPoseFlipped(pose, constraints),
+        AutoBuilder.pathfindToPose(pose, constraints),
+        () -> Robot.getAlliance());
+  }
+
+  public Command goToPath(PathPlannerPath path) {
+    PathConstraints constraints =
+        new PathConstraints(4.0, 4.0, Units.degreesToRadians(540), Units.degreesToRadians(720));
+    return AutoBuilder.pathfindThenFollowPath(path, constraints);
+  }
+
   /** Returns the current odometry pose. */
   @AutoLogOutput(key = "Odometry/Robot")
   public Pose2d getPose() {
@@ -284,6 +361,22 @@ public class Drive extends SubsystemBase {
       return poseEstimator.getEstimatedPosition();
     }
     return inputs.pose;
+  }
+
+  public Pose2d findClosestPose(Pose2d[] poses) {
+    Pose2d currentPose = getPose();
+    double minDistance = Double.MAX_VALUE;
+    Pose2d closestPose = null;
+
+    for (Pose2d pose : poses) {
+      double distance = currentPose.getTranslation().getDistance(pose.getTranslation());
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestPose = pose;
+      }
+    }
+
+    return closestPose;
   }
 
   public Rotation2d getRotation() {
@@ -405,5 +498,22 @@ public class Drive extends SubsystemBase {
       currentPositions[moduleIndex].distanceMeters = inputs.drivePositions[moduleIndex][timeIndex];
       currentPositions[moduleIndex].angle = inputs.steerPositions[moduleIndex][timeIndex];
     }
+  }
+
+  /**
+   * Builds an array of `ModuleIOInputsAutoLogged` objects.
+   *
+   * @param size The number of elements in the array.
+   * @return An initialized array of `ModuleIOInputsAutoLogged` objects.
+   */
+  public ModuleIOInputsAutoLogged[] buildModuleAutoLogeed(int size) {
+    if (size <= 0) {
+      throw new IllegalArgumentException("Size must be positive");
+    }
+    ModuleIOInputsAutoLogged[] modulePositions = new ModuleIOInputsAutoLogged[size];
+    for (int i = 0; i < modulePositions.length; i++) {
+      modulePositions[i] = new ModuleIOInputsAutoLogged();
+    }
+    return modulePositions;
   }
 }

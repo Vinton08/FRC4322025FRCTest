@@ -68,10 +68,7 @@ public class RobotContainer {
 
         new Vision(
             drivetrain::addVisionData,
-            new VisionIOLimelight("limelight-fl", drivetrain::getVisionParameters),
-            new VisionIOLimelight("limelight-fr", drivetrain::getVisionParameters),
-            new VisionIOLimelight("limelight-bl", drivetrain::getVisionParameters),
-            new VisionIOLimelight("limelight-br", drivetrain::getVisionParameters));
+            new VisionIOLimelight("limelight-f", drivetrain::getVisionParameters));
 
         // flywheel = new Flywheel(new FlywheelIOCTRE()); // Disabled to prevent robot movement if
         // deployed to a real robot
