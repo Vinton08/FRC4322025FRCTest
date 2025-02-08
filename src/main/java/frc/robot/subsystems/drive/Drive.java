@@ -43,9 +43,8 @@ import frc.robot.Constants.Mode;
 import frc.robot.Robot;
 import frc.robot.subsystems.drive.requests.SysIdSwerveSteerGains_Torque;
 import frc.robot.subsystems.drive.requests.SysIdSwerveTranslation_Torque;
-import frc.robot.subsystems.vision.VisionUtil.VisionMeasurement;
+// import frc.robot.subsystems.vision.VisionUtil.VisionMeasurement;
 import frc.robot.utils.ArrayBuilder;
-import java.util.List;
 import java.util.function.Supplier;
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -458,16 +457,16 @@ public class Drive extends SubsystemBase {
    * @param visionPose The pose of the robot as measured by the vision camera.
    * @param timestamp The timestamp of the vision measurement in seconds.
    */
-  public void addVisionMeasurement(VisionMeasurement visionMeasurement) {
-    this.addVisionMeasurement(
-        visionMeasurement.poseEstimate().pose().toPose2d(),
-        visionMeasurement.poseEstimate().timestampSeconds(),
-        visionMeasurement.visionMeasurementStdDevs());
-  }
+  // public void addVisionMeasurement(VisionMeasurement visionMeasurement) {
+  //   this.addVisionMeasurement(
+  //       visionMeasurement.poseEstimate().pose().toPose2d(),
+  //       visionMeasurement.poseEstimate().timestampSeconds(),
+  //       visionMeasurement.visionMeasurementStdDevs());
+  // }
 
-  public void addVisionData(List<VisionMeasurement> visionData) {
-    visionData.forEach(this::addVisionMeasurement);
-  }
+  // public void addVisionData(List<VisionMeasurement> visionData) {
+  //   visionData.forEach(this::addVisionMeasurement);
+  // }
 
   public VisionParameters getVisionParameters() {
     return new VisionParameters(getPose(), getGyroRate());

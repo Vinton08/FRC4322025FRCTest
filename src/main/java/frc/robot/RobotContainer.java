@@ -4,9 +4,6 @@ import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.math.geometry.Transform3d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -22,10 +19,10 @@ import frc.robot.subsystems.drive.requests.SwerveSetpointGen;
 import frc.robot.subsystems.elevator.Elevator;
 import frc.robot.subsystems.elevator.ElevatorIO;
 import frc.robot.subsystems.elevator.ElevatorIOSIM;
-import frc.robot.subsystems.vision.Vision;
-import frc.robot.subsystems.vision.VisionIO;
-import frc.robot.subsystems.vision.VisionIOLimelight;
-import frc.robot.subsystems.vision.VisionIOPhotonVisionSIM;
+// import frc.robot.subsystems.vision.Vision;
+// import frc.robot.subsystems.vision.VisionIO;
+// import frc.robot.subsystems.vision.VisionIOLimelight;
+// import frc.robot.subsystems.vision.VisionIOPhotonVisionSIM;
 import frc.robot.utils.TunableController;
 import frc.robot.utils.TunableController.TunableControllerType;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -58,9 +55,9 @@ public class RobotContainer {
         // Real robot, instantiate hardware IO implementations
         drivetrain = new Drive(currentDriveTrain);
 
-        new Vision(
-            drivetrain::addVisionData,
-            new VisionIOLimelight("limelight-f", drivetrain::getVisionParameters));
+        // new Vision(
+        //     drivetrain::addVisionData,
+        //     new VisionIOLimelight("limelight-f", drivetrain::getVisionParameters));
 
         // elevator = new Elevator(new ElevatorIOCTRE()); // Disabled to prevent robot movement if
         // deployed to a real robot
@@ -72,32 +69,32 @@ public class RobotContainer {
         // Sim robot, instantiate physics sim IO implementations
         drivetrain = new Drive(currentDriveTrain);
 
-        new Vision(
-            drivetrain::addVisionData,
-            new VisionIOPhotonVisionSIM(
-                "Front Camera",
-                new Transform3d(
-                    new Translation3d(0.2, 0.0, 0.8),
-                    new Rotation3d(0, Math.toRadians(20), Math.toRadians(0))),
-                drivetrain::getVisionParameters),
-            new VisionIOPhotonVisionSIM(
-                "Back Camera",
-                new Transform3d(
-                    new Translation3d(-0.2, 0.0, 0.8),
-                    new Rotation3d(0, Math.toRadians(20), Math.toRadians(180))),
-                drivetrain::getVisionParameters),
-            new VisionIOPhotonVisionSIM(
-                "Left Camera",
-                new Transform3d(
-                    new Translation3d(0.0, 0.2, 0.8),
-                    new Rotation3d(0, Math.toRadians(20), Math.toRadians(90))),
-                drivetrain::getVisionParameters),
-            new VisionIOPhotonVisionSIM(
-                "Right Camera",
-                new Transform3d(
-                    new Translation3d(0.0, -0.2, 0.8),
-                    new Rotation3d(0, Math.toRadians(20), Math.toRadians(-90))),
-                drivetrain::getVisionParameters));
+        // new Vision(
+        //     drivetrain::addVisionData,
+        //     new VisionIOPhotonVisionSIM(
+        //         "Front Camera",
+        //         new Transform3d(
+        //             new Translation3d(0.2, 0.0, 0.8),
+        //             new Rotation3d(0, Math.toRadians(20), Math.toRadians(0))),
+        //         drivetrain::getVisionParameters),
+        //     new VisionIOPhotonVisionSIM(
+        //         "Back Camera",
+        //         new Transform3d(
+        //             new Translation3d(-0.2, 0.0, 0.8),
+        //             new Rotation3d(0, Math.toRadians(20), Math.toRadians(180))),
+        //         drivetrain::getVisionParameters),
+        //     new VisionIOPhotonVisionSIM(
+        //         "Left Camera",
+        //         new Transform3d(
+        //             new Translation3d(0.0, 0.2, 0.8),
+        //             new Rotation3d(0, Math.toRadians(20), Math.toRadians(90))),
+        //         drivetrain::getVisionParameters),
+        //     new VisionIOPhotonVisionSIM(
+        //         "Right Camera",
+        //         new Transform3d(
+        //             new Translation3d(0.0, -0.2, 0.8),
+        //             new Rotation3d(0, Math.toRadians(20), Math.toRadians(-90))),
+        //         drivetrain::getVisionParameters));
 
         elevator = new Elevator(new ElevatorIOSIM());
 
@@ -107,12 +104,12 @@ public class RobotContainer {
         // Replayed robot, disable IO implementations
         drivetrain = new Drive(new DriveIO() {});
 
-        new Vision(
-            drivetrain::addVisionData,
-            new VisionIO() {},
-            new VisionIO() {},
-            new VisionIO() {},
-            new VisionIO() {});
+        // new Vision(
+        //     drivetrain::addVisionData,
+        //     new VisionIO() {},
+        //     new VisionIO() {},
+        //     new VisionIO() {},
+        //     new VisionIO() {});
 
         elevator = new Elevator(new ElevatorIO() {});
         break;
