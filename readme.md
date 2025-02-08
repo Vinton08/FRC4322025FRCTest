@@ -9,5 +9,4 @@ https://github.com/Hemlock5712/2025SwerveTemplate
 
 ***Good Luck to all this season!***
 
-![Butler Tech Logo](./assets/BTLogo.png)
-![432 Logo](./assets/432LogoColor.png)
+<img src="./assets/432LogoColor.png" width=200 height=200>
