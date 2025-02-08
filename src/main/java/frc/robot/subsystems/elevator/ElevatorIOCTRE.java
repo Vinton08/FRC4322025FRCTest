@@ -14,7 +14,6 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.Follower;
 import com.ctre.phoenix6.controls.PositionVoltage;
-import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import edu.wpi.first.math.filter.Debouncer;
@@ -35,15 +34,15 @@ public class ElevatorIOCTRE implements ElevatorIO {
   public static final double GEAR_RATIO = 2.0;
 
   /** The leader TalonFX motor controller (CAN ID: 30) */
-  public final TalonFX leader = new TalonFX(30);
+  public final TalonFX leader = new TalonFX(18);
   /** The follower TalonFX motor controller (CAN ID: 31) */
-  public final TalonFX follower = new TalonFX(31);
+  public final TalonFX follower = new TalonFX(19);
 
   /** The CANcoder for position feedback (CAN ID: 32) */
-  public final CANcoder encoder = new CANcoder(32);
 
   // Status signals for monitoring motor and encoder states
   private final StatusSignal<Angle> leaderPosition = leader.getPosition();
+
   private final StatusSignal<Angle> leaderRotorPosition = leader.getRotorPosition();
   private final StatusSignal<AngularVelocity> leaderVelocity = leader.getVelocity();
   private final StatusSignal<AngularVelocity> leaderRotorVelocity = leader.getRotorVelocity();
@@ -52,8 +51,6 @@ public class ElevatorIOCTRE implements ElevatorIO {
   private final StatusSignal<Current> followerStatorCurrent = follower.getStatorCurrent();
   private final StatusSignal<Current> leaderSupplyCurrent = leader.getSupplyCurrent();
   private final StatusSignal<Current> followerSupplyCurrent = follower.getSupplyCurrent();
-  private final StatusSignal<Angle> encoderPosition = encoder.getPosition();
-  private final StatusSignal<AngularVelocity> encoderVelocity = encoder.getVelocity();
 
   // Debouncers for connection status (filters out brief disconnections)
   private final Debouncer leaderDebounce = new Debouncer(0.5);
@@ -90,14 +87,11 @@ public class ElevatorIOCTRE implements ElevatorIO {
         leaderStatorCurrent,
         followerStatorCurrent,
         leaderSupplyCurrent,
-        followerSupplyCurrent,
-        encoderPosition,
-        encoderVelocity);
+        followerSupplyCurrent);
 
     // Optimize CAN bus usage for all devices
     leader.optimizeBusUtilization(4, 0.1);
     follower.optimizeBusUtilization(4, 0.1);
-    encoder.optimizeBusUtilization(4, 0.1);
   }
 
   /**
@@ -121,7 +115,6 @@ public class ElevatorIOCTRE implements ElevatorIO {
     config.Slot0.kG = 0.7297; // Gravity feedforward
 
     // Use the CANcoder as the remote feedback device
-    config.Feedback.withRemoteCANcoder(encoder);
     return config;
   }
 
@@ -148,21 +141,15 @@ public class ElevatorIOCTRE implements ElevatorIO {
     StatusCode followerStatus =
         BaseStatusSignal.refreshAll(followerStatorCurrent, followerSupplyCurrent);
 
-    StatusCode encoderStatus = BaseStatusSignal.refreshAll(encoderPosition, encoderVelocity);
-
     // Update connection status with debouncing
     inputs.leaderConnected = leaderDebounce.calculate(leaderStatus.isOK());
     inputs.followerConnected = followerDebounce.calculate(followerStatus.isOK());
-    inputs.encoderConnected = encoderDebounce.calculate(encoderStatus.isOK());
 
     // Update position and velocity measurements
     inputs.leaderPosition = leaderPosition.getValue();
     inputs.leaderRotorPosition = leaderRotorPosition.getValue();
     inputs.leaderVelocity = leaderVelocity.getValue();
     inputs.leaderRotorVelocity = leaderRotorVelocity.getValue();
-
-    inputs.encoderPosition = encoderPosition.getValue();
-    inputs.encoderVelocity = encoderVelocity.getValue();
 
     // Update voltage and current measurements
     inputs.appliedVoltage = leaderAppliedVolts.getValue();

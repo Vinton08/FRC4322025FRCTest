@@ -12,7 +12,6 @@ import static edu.wpi.first.units.Units.Meters;
 import static edu.wpi.first.units.Units.MetersPerSecond;
 import static edu.wpi.first.units.Units.Pounds;
 
-import com.ctre.phoenix6.sim.CANcoderSimState;
 import com.ctre.phoenix6.sim.TalonFXSimState;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N2;
@@ -42,7 +41,7 @@ public class ElevatorIOSIM extends ElevatorIOCTRE {
   /** Simulation state for the follower motor */
   private final TalonFXSimState followerSim;
   /** Simulation state for the CANcoder */
-  private final CANcoderSimState encoderSim;
+  // private final CANcoderSimState encoderSim;
 
   /**
    * Constructs a new ElevatorIOSIM instance. Initializes the physics simulation with realistic
@@ -55,7 +54,7 @@ public class ElevatorIOSIM extends ElevatorIOCTRE {
     // Get simulation states for all hardware
     leaderSim = leader.getSimState();
     followerSim = follower.getSimState();
-    encoderSim = encoder.getSimState();
+    // encoderSim = encoder.getSimState();
 
     // Configure dual Kraken X60 FOC motors
     DCMotor motor = DCMotor.getKrakenX60Foc(2);
@@ -92,7 +91,7 @@ public class ElevatorIOSIM extends ElevatorIOCTRE {
     // Simulate battery voltage effects on all devices
     leaderSim.setSupplyVoltage(RobotController.getBatteryVoltage());
     followerSim.setSupplyVoltage(RobotController.getBatteryVoltage());
-    encoderSim.setSupplyVoltage(RobotController.getBatteryVoltage());
+    // encoderSim.setSupplyVoltage(RobotController.getBatteryVoltage());
 
     // Update physics simulation
     motorSimModel.setInputVoltage(leaderSim.getMotorVoltage());
@@ -113,7 +112,7 @@ public class ElevatorIOSIM extends ElevatorIOCTRE {
     leaderSim.setRotorVelocity(velocity.times(GEAR_RATIO));
 
     // Update simulated CANcoder readings
-    encoderSim.setRawPosition(position);
-    encoderSim.setVelocity(velocity);
+    // encoderSim.setRawPosition(position);
+    // encoderSim.setVelocity(velocity);
   }
 }
